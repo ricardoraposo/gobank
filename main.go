@@ -10,6 +10,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := store.Init(); err != nil {
+		log.Fatal(err)
+	}
+
 	server := NewApiServer(":3000", store)
 	server.Run()
 }

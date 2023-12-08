@@ -25,34 +25,53 @@ func (s *ApiServer) Run() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/account", makeHTTPHandleFunc(s.handleAccount))
-	router.HandleFunc("/account/{id}", makeHTTPHandleFunc(s.handleGetAccount))
+	router.HandleFunc("/account/{id}", makeHTTPHandleFunc(s.handleGetAccountById))
 
 	log.Println("JSON api server running on port: ", s.listenAddr)
 	http.ListenAndServe(s.listenAddr, router)
 }
 
 func (s *ApiServer) handleAccount(w http.ResponseWriter, r *http.Request) error {
-	if r.Method == http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
 		return s.handleGetAccount(w, r)
-	}
-	if r.Method == http.MethodPost {
+	case http.MethodPost:
 		return s.handleCreateAccount(w, r)
-	}
-	if r.Method == http.MethodDelete {
+	case http.MethodDelete:
 		return s.handleDeleteAccount(w, r)
 	}
 	return fmt.Errorf("method not allowed %s", r.Method)
 }
 
 func (s *ApiServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
-	account := NewAccount("Rick", "Raposo")
-	return WriteJson(w, http.StatusOK, account)
+    accounts, err := s.store.GetAllAccounts()
+    if err != nil {
+        return err
+    }
+
+    return WriteJson(w, http.StatusOK, accounts)
 }
 
-func (s *ApiServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
+func (s *ApiServer) handleGetAccountById(w http.ResponseWriter, r *http.Request) error {
 	id := mux.Vars(r)["id"]
 	log.Println(id)
 	return WriteJson(w, http.StatusOK, &Account{})
+}
+
+func (s *ApiServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
+	createAccountReq := &CreateAccountRequest{}
+	if err := json.NewDecoder(r.Body).Decode(createAccountReq); err != nil {
+		log.Println("Something wrong decoding this shit")
+		return err
+	}
+
+	account := NewAccount(createAccountReq.FirstName, createAccountReq.LastName)
+	if err := s.store.CreateAccount(account); err != nil {
+		log.Println("Something wrong creating this shit")
+		return err
+	}
+
+	return WriteJson(w, http.StatusOK, account)
 }
 
 func (s *ApiServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
