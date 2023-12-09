@@ -1,9 +1,13 @@
 GET http://localhost:3000/account
 
+GET http://localhost:3000/account/1
+
 POST http://localhost:3000/account
 Content-Type: application/json
 
 {
     "firstName": "Rick",
-    "lastName": "Raposo"
+    "lastName": "Riquinho"
 }
+
+DELETE http://localhost:3000/account/1

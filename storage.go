@@ -57,18 +57,18 @@ func (s *PostgresStore) CreateAccount(acc *Account) error {
     (first_name, last_name, number, balance, created_at)
         VALUES ($1, $2, $3, $4, $5)`
 
-	resp, err := s.db.Query(query, acc.FirstName, acc.LastName, acc.Number, acc.Balance, acc.CreatedAt)
+	_, err := s.db.Query(query, acc.FirstName, acc.LastName, acc.Number, acc.Balance, acc.CreatedAt)
 
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%+v\n", resp)
 	return nil
 }
 
 func (s *PostgresStore) DeleteAccount(id int) error {
-	return nil
+    _, err := s.db.Query("DELETE FROM account WHERE id = $1", id)
+	return err
 }
 
 func (s *PostgresStore) UpdateAccount(*Account) error {
@@ -76,7 +76,14 @@ func (s *PostgresStore) UpdateAccount(*Account) error {
 }
 
 func (s *PostgresStore) GetAccountByID(id int) (*Account, error) {
-	return nil, nil
+    rows, err := s.db.Query("SELECT * FROM account WHERE id = $1", id)
+    if err != nil {
+        return nil, err
+    }
+    for rows.Next() {
+        return scanIntoAccount(rows)
+    }
+	return nil, fmt.Errorf("account %d not found", id)
 }
 
 func (s *PostgresStore) GetAllAccounts() ([]*Account, error) {
@@ -84,12 +91,11 @@ func (s *PostgresStore) GetAllAccounts() ([]*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-    defer rows.Close()
+	defer rows.Close()
 
 	accounts := []*Account{}
 	for rows.Next() {
-		account := &Account{}
-		err := rows.Scan(&account.ID, &account.FirstName, &account.LastName, &account.Number, &account.Balance, &account.CreatedAt)
+		account, err := scanIntoAccount(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -97,4 +103,10 @@ func (s *PostgresStore) GetAllAccounts() ([]*Account, error) {
 	}
 
 	return accounts, nil
+}
+
+func scanIntoAccount(rows *sql.Rows) (*Account, error) {
+	account := &Account{}
+	err := rows.Scan(&account.ID, &account.FirstName, &account.LastName, &account.Number, &account.Balance, &account.CreatedAt)
+	return account, err
 }
